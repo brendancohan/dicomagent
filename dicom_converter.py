@@ -13,6 +13,7 @@ def convert_pdf_to_dicom(
     accession_number: str = "",
     dob: str = "",
     sex: str = "",
+    series_description: str = "Ref Document",
 ) -> List[pydicom.Dataset]:
     """
     Renders PDF pages to images and creates a list of Secondary Capture DICOM datasets.
@@ -79,6 +80,8 @@ def convert_pdf_to_dicom(
         ds.SeriesInstanceUID = series_instance_uid
         ds.SeriesNumber = 1
         ds.Modality = "OT"  # Other
+        if series_description:
+            ds.SeriesDescription = series_description
 
         # Equipment Module
         ds.Manufacturer = "DICOM Agent Service"
