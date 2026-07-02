@@ -3,6 +3,15 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv, set_key
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.FileHandler("dicom_agent.log"), logging.StreamHandler()],
+)
+logger = logging.getLogger(__name__)
 
 from dicom_converter import convert_pdf_to_dicom
 from dicom_sender import send_dicom_to_pacs
@@ -171,6 +180,9 @@ async def encapsulate_and_send_pdf(
     try:
         # Read current config for each request
         config = get_current_config()
+        logger.info(
+            f"Received request to convert and send PDF for patient {patient_id} ({patient_name})"
+        )
 
         # Read the PDF bytes
         pdf_bytes = await pdf_file.read()
