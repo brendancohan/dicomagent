@@ -1,7 +1,10 @@
 from typing import List
 from pynetdicom import AE
 from pydicom.dataset import Dataset
-from pynetdicom.sop_class import SecondaryCaptureImageStorage
+from pynetdicom.sop_class import SecondaryCaptureImageStorage, StudyRootQueryRetrieveInformationModelFind
+import logging
+
+logger = logging.getLogger("dicom_agent")
 
 
 def send_dicom_to_pacs(
@@ -22,28 +25,74 @@ def send_dicom_to_pacs(
     # We are sending Secondary Capture Images
     ae.add_requested_context(SecondaryCaptureImageStorage)
 
-    print(f"Requesting Association with {pacs_ae_title} at {pacs_ip}:{pacs_port}...")
+    logger.info(f"Requesting Association with {pacs_ae_title} at {pacs_ip}:{pacs_port}...")
     assoc = ae.associate(pacs_ip, pacs_port, ae_title=pacs_ae_title)
 
     if assoc.is_established:
-        print("Association established. Sending C-STORE requests...")
+        logger.info("Association established. Sending C-STORE requests...")
 
         all_success = True
         for idx, ds in enumerate(datasets):
-            print(f"Sending dataset {idx + 1} of {len(datasets)}...")
+            logger.info(f"Sending dataset {idx + 1} of {len(datasets)}...")
             status = assoc.send_c_store(ds)
 
             if status:
-                print("C-STORE request status: 0x{0:04x}".format(status.Status))
+                logger.info("C-STORE request status: 0x{0:04x}".format(status.Status))
                 if status.Status != 0x0000:
                     all_success = False
             else:
-                print("Connection timed out, was aborted or received invalid response")
+                logger.error("Connection timed out, was aborted or received invalid response")
                 all_success = False
 
         # Release the association
         assoc.release()
         return all_success
     else:
-        print("Association rejected, aborted or never connected")
+        logger.error("Association rejected, aborted or never connected")
         return False
+
+
+def query_study_uid(
+    accession_number: str,
+    pacs_ip: str,
+    pacs_port: int,
+    pacs_ae_title: str,
+    agent_ae_title: str,
+) -> str:
+    """
+    Query PACS for StudyInstanceUID given an Accession Number.
+    Returns the StudyInstanceUID or None if not found.
+    """
+    ae = AE(ae_title=agent_ae_title)
+    ae.add_requested_context(StudyRootQueryRetrieveInformationModelFind)
+
+    logger.info(f"Requesting Association with {pacs_ae_title} at {pacs_ip}:{pacs_port} for C-FIND...")
+    assoc = ae.associate(pacs_ip, pacs_port, ae_title=pacs_ae_title)
+
+    if assoc.is_established:
+        logger.info("Association established. Sending C-FIND request...")
+
+        ds = Dataset()
+        ds.QueryRetrieveLevel = "STUDY"
+        ds.AccessionNumber = accession_number
+        ds.StudyInstanceUID = ""
+
+        responses = assoc.send_c_find(ds, StudyRootQueryRetrieveInformationModelFind)
+
+        study_uid = None
+        for (status, identifier) in responses:
+            if status:
+                # 0xFF00 and 0xFF01 are 'Pending' statuses (which means matches)
+                if status.Status in (0xFF00, 0xFF01) and identifier:
+                    if 'StudyInstanceUID' in identifier:
+                        study_uid = identifier.StudyInstanceUID
+                        logger.info(f"C-FIND match found! Extracted StudyInstanceUID: {study_uid}")
+                        break # We just need the first match
+            else:
+                logger.error("Connection timed out, was aborted or received invalid response during C-FIND")
+
+        assoc.release()
+        return study_uid
+    else:
+        logger.error("Association rejected, aborted or never connected")
+        return None

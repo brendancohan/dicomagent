@@ -5,16 +5,33 @@ from dotenv import load_dotenv, set_key
 import os
 import logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.FileHandler("dicom_agent.log"), logging.StreamHandler()],
+from logging.handlers import TimedRotatingFileHandler
+
+log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+
+# Rotate daily at midnight, keep 7 days of logs
+file_handler = TimedRotatingFileHandler(
+    filename="dicom_agent.log",
+    when="midnight",
+    interval=1,
+    backupCount=7,
+    encoding="utf-8"
 )
-logger = logging.getLogger(__name__)
+file_handler.setFormatter(log_formatter)
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(log_formatter)
+
+# Configure the root logger to capture all logs (including pynetdicom and uvicorn)
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+root_logger.addHandler(file_handler)
+root_logger.addHandler(console_handler)
+
+logger = logging.getLogger("dicom_agent")
 
 from dicom_converter import convert_pdf_to_dicom
-from dicom_sender import send_dicom_to_pacs
+from dicom_sender import send_dicom_to_pacs, query_study_uid
 
 ENV_FILE = ".env"
 load_dotenv(ENV_FILE)
@@ -180,9 +197,28 @@ async def encapsulate_and_send_pdf(
     try:
         # Read current config for each request
         config = get_current_config()
-        logger.info(
-            f"Received request to convert and send PDF for patient {patient_id} ({patient_name})"
+        
+        logger.info(f"Received PDF encapsulation request. File: '{pdf_file.filename}', Accession: '{accession_number}', PatientID: '{patient_id}'")
+
+        if not accession_number:
+            raise HTTPException(status_code=400, detail="Accession Number is required to query PACS for StudyUID")
+
+        # Query PACS for the StudyInstanceUID
+        study_uid = query_study_uid(
+            accession_number=accession_number,
+            pacs_ip=config.pacs_ip,
+            pacs_port=config.pacs_port,
+            pacs_ae_title=config.pacs_ae_title,
+            agent_ae_title=config.agent_ae_title,
         )
+
+        if not study_uid:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Study not found in PACS for Accession Number: {accession_number}"
+            )
+
+        logger.info(f"Successfully retrieved StudyInstanceUID: {study_uid} from PACS for Accession: {accession_number}")
 
         # Read the PDF bytes
         pdf_bytes = await pdf_file.read()
@@ -196,6 +232,7 @@ async def encapsulate_and_send_pdf(
             dob=dob,
             sex=sex,
             series_description=series_description,
+            study_instance_uid=study_uid,
         )
 
         # 2. Send to PACS
@@ -218,6 +255,8 @@ async def encapsulate_and_send_pdf(
                 detail="Failed to send DICOM file to PACS. Check connection or PACS logs.",
             )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

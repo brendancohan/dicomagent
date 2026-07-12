@@ -14,6 +14,7 @@ def convert_pdf_to_dicom(
     dob: str = "",
     sex: str = "",
     series_description: str = "Ref Document",
+    study_instance_uid: str = None,
 ) -> List[pydicom.Dataset]:
     """
     Renders PDF pages to images and creates a list of Secondary Capture DICOM datasets.
@@ -25,7 +26,8 @@ def convert_pdf_to_dicom(
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
     # Generate common UIDs for the entire study/series
-    study_instance_uid = generate_uid()
+    if not study_instance_uid:
+        study_instance_uid = generate_uid()
     series_instance_uid = generate_uid()
 
     # Standard Date and Time

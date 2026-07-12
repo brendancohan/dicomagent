@@ -1,0 +1,148 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DICOM Agent Service",
+    "description": "API to encapsulate PDFs into DICOM and send to PACS",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/dicom/encapsulate-pdf": {
+      "post": {
+        "summary": "Convert PDF to DICOM and send to PACS",
+        "operationId": "encapsulate_and_send_pdf_api_v1_dicom_encapsulate_pdf_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_encapsulate_and_send_pdf_api_v1_dicom_encapsulate_pdf_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_encapsulate_and_send_pdf_api_v1_dicom_encapsulate_pdf_post": {
+        "properties": {
+          "pdf_file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Pdf File",
+            "description": "The PDF file to be converted"
+          },
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id",
+            "description": "The ID of the patient"
+          },
+          "patient_name": {
+            "type": "string",
+            "title": "Patient Name",
+            "description": "The name of the patient (e.g., Doe^John)"
+          },
+          "accession_number": {
+            "type": "string",
+            "title": "Accession Number",
+            "description": "The Accession Number for the study",
+            "default": ""
+          },
+          "dob": {
+            "type": "string",
+            "title": "Dob",
+            "description": "Patient Date of Birth (YYYYMMDD)",
+            "default": ""
+          },
+          "sex": {
+            "type": "string",
+            "title": "Sex",
+            "description": "Patient Sex (M, F, O)",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "pdf_file",
+          "patient_id",
+          "patient_name"
+        ],
+        "title": "Body_encapsulate_and_send_pdf_api_v1_dicom_encapsulate_pdf_post"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
