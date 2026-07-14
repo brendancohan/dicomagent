@@ -48,15 +48,24 @@ class Config(BaseModel):
     pacs_port: int
     pacs_ae_title: str
     agent_ae_title: str
+    query_pacs_ip: str
+    query_pacs_port: int
+    query_pacs_ae_title: str
 
 
 def get_current_config() -> Config:
     load_dotenv(ENV_FILE, override=True)
+    pacs_ip = os.getenv("PACS_IP", "www.dicomserver.co.uk")
+    pacs_port = int(os.getenv("PACS_PORT", "11112"))
+    pacs_ae_title = os.getenv("PACS_AE_TITLE", "MOCK_PACS")
     return Config(
-        pacs_ip=os.getenv("PACS_IP", "www.dicomserver.co.uk"),
-        pacs_port=int(os.getenv("PACS_PORT", "11112")),
-        pacs_ae_title=os.getenv("PACS_AE_TITLE", "MOCK_PACS"),
+        pacs_ip=pacs_ip,
+        pacs_port=pacs_port,
+        pacs_ae_title=pacs_ae_title,
         agent_ae_title=os.getenv("AGENT_AE_TITLE", "MY_AGENT"),
+        query_pacs_ip=os.getenv("QUERY_PACS_IP", pacs_ip),
+        query_pacs_port=int(os.getenv("QUERY_PACS_PORT", str(pacs_port))),
+        query_pacs_ae_title=os.getenv("QUERY_PACS_AE_TITLE", pacs_ae_title),
     )
 
 
@@ -74,6 +83,9 @@ def update_config(config: Config):
     set_key(ENV_FILE, "PACS_PORT", str(config.pacs_port))
     set_key(ENV_FILE, "PACS_AE_TITLE", config.pacs_ae_title)
     set_key(ENV_FILE, "AGENT_AE_TITLE", config.agent_ae_title)
+    set_key(ENV_FILE, "QUERY_PACS_IP", config.query_pacs_ip)
+    set_key(ENV_FILE, "QUERY_PACS_PORT", str(config.query_pacs_port))
+    set_key(ENV_FILE, "QUERY_PACS_AE_TITLE", config.query_pacs_ae_title)
     return {"message": "Configuration updated successfully"}
 
 
@@ -103,6 +115,8 @@ def config_ui():
     <body>
         <div class="container">
             <h2>DICOM Agent Configuration</h2>
+            
+            <h3>Store PACS Configuration</h3>
             <div class="form-group">
                 <label>PACS IP / Hostname</label>
                 <input type="text" id="pacs_ip" />
@@ -115,6 +129,22 @@ def config_ui():
                 <label>PACS AE Title</label>
                 <input type="text" id="pacs_ae_title" />
             </div>
+
+            <h3>Query PACS Configuration</h3>
+            <div class="form-group">
+                <label>Query PACS IP / Hostname</label>
+                <input type="text" id="query_pacs_ip" />
+            </div>
+            <div class="form-group">
+                <label>Query PACS Port</label>
+                <input type="number" id="query_pacs_port" />
+            </div>
+            <div class="form-group">
+                <label>Query PACS AE Title</label>
+                <input type="text" id="query_pacs_ae_title" />
+            </div>
+
+            <h3>Agent Configuration</h3>
             <div class="form-group">
                 <label>Agent AE Title (Our AE Title)</label>
                 <input type="text" id="agent_ae_title" />
@@ -132,6 +162,9 @@ def config_ui():
                     document.getElementById('pacs_port').value = data.pacs_port;
                     document.getElementById('pacs_ae_title').value = data.pacs_ae_title;
                     document.getElementById('agent_ae_title').value = data.agent_ae_title;
+                    document.getElementById('query_pacs_ip').value = data.query_pacs_ip;
+                    document.getElementById('query_pacs_port').value = data.query_pacs_port;
+                    document.getElementById('query_pacs_ae_title').value = data.query_pacs_ae_title;
                 } catch (e) {
                     showMessage("Failed to load configuration", false);
                 }
@@ -142,7 +175,10 @@ def config_ui():
                     pacs_ip: document.getElementById('pacs_ip').value,
                     pacs_port: parseInt(document.getElementById('pacs_port').value),
                     pacs_ae_title: document.getElementById('pacs_ae_title').value,
-                    agent_ae_title: document.getElementById('agent_ae_title').value
+                    agent_ae_title: document.getElementById('agent_ae_title').value,
+                    query_pacs_ip: document.getElementById('query_pacs_ip').value,
+                    query_pacs_port: parseInt(document.getElementById('query_pacs_port').value),
+                    query_pacs_ae_title: document.getElementById('query_pacs_ae_title').value
                 };
 
                 try {
@@ -192,6 +228,7 @@ async def encapsulate_and_send_pdf(
     series_description: str = Form("Ref Document", description="Description of the DICOM series"),
 ):
     if pdf_file.content_type != "application/pdf":
+        logger.warning(f"Invalid file type uploaded: {pdf_file.content_type}. Returning 400 Bad Request.")
         raise HTTPException(status_code=400, detail="Uploaded file must be a PDF")
 
     try:
@@ -201,18 +238,20 @@ async def encapsulate_and_send_pdf(
         logger.info(f"Received PDF encapsulation request. File: '{pdf_file.filename}', Accession: '{accession_number}', PatientID: '{patient_id}'")
 
         if not accession_number:
+            logger.warning("Accession Number is missing. Returning 400 Bad Request.")
             raise HTTPException(status_code=400, detail="Accession Number is required to query PACS for StudyUID")
 
         # Query PACS for the StudyInstanceUID
         study_uid = query_study_uid(
             accession_number=accession_number,
-            pacs_ip=config.pacs_ip,
-            pacs_port=config.pacs_port,
-            pacs_ae_title=config.pacs_ae_title,
+            pacs_ip=config.query_pacs_ip,
+            pacs_port=config.query_pacs_port,
+            pacs_ae_title=config.query_pacs_ae_title,
             agent_ae_title=config.agent_ae_title,
         )
 
         if not study_uid:
+            logger.warning(f"Study not found in PACS for Accession Number: {accession_number}. Returning 404 Not Found.")
             raise HTTPException(
                 status_code=404,
                 detail=f"Study not found in PACS for Accession Number: {accession_number}"
@@ -245,19 +284,23 @@ async def encapsulate_and_send_pdf(
         )
 
         if success:
+            logger.info("Successfully encapsulated PDF and sent to PACS. Returning 200 OK.")
             return JSONResponse(
                 status_code=200,
                 content={"message": "DICOM file successfully created and sent to PACS"},
             )
         else:
+            logger.error("Failed to send DICOM file to PACS. Returning 502 Bad Gateway.")
             raise HTTPException(
                 status_code=502,
                 detail="Failed to send DICOM file to PACS. Check connection or PACS logs.",
             )
 
-    except HTTPException:
+    except HTTPException as e:
+        logger.error(f"HTTPException raised: {e.status_code} - {e.detail}")
         raise
     except Exception as e:
+        logger.error(f"Unexpected error occurred: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
