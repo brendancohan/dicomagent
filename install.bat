@@ -1,4 +1,5 @@
 @echo off
+pushd "%~dp0"
 echo Setting up DICOM Agent Service...
 
 :: Check if python is installed
@@ -24,4 +25,5 @@ echo Installation complete!
 echo To start the service, run:
 echo   venv\Scripts\activate
 echo   uvicorn main:app --host 0.0.0.0 --port 8000
+popd
 pause

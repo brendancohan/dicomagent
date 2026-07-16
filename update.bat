@@ -1,5 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
+pushd "%~dp0"
 echo ===================================
 echo    DICOM Agent Service Updater     
 echo ===================================
@@ -99,5 +100,6 @@ echo ===================================
 echo Please restart the service (close the running console window and start it again) for changes to take effect.
 
 :end
+popd
 endlocal
 pause
