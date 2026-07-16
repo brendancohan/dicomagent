@@ -1,7 +1,7 @@
 from typing import List
 from pynetdicom import AE
 from pydicom.dataset import Dataset
-from pynetdicom.sop_class import SecondaryCaptureImageStorage, StudyRootQueryRetrieveInformationModelFind
+from pynetdicom.sop_class import SecondaryCaptureImageStorage, ModalityWorklistInformationFind
 import logging
 
 logger = logging.getLogger("dicom_agent")
@@ -64,20 +64,19 @@ def query_study_uid(
     Returns the StudyInstanceUID or None if not found.
     """
     ae = AE(ae_title=agent_ae_title)
-    ae.add_requested_context(StudyRootQueryRetrieveInformationModelFind)
+    ae.add_requested_context(ModalityWorklistInformationFind)
 
-    logger.info(f"Requesting Association with {pacs_ae_title} at {pacs_ip}:{pacs_port} for C-FIND...")
+    logger.info(f"Requesting Association with {pacs_ae_title} at {pacs_ip}:{pacs_port} for C-FIND (MWL)...")
     assoc = ae.associate(pacs_ip, pacs_port, ae_title=pacs_ae_title)
 
     if assoc.is_established:
-        logger.info("Association established. Sending C-FIND request...")
+        logger.info("Association established. Sending C-FIND request (MWL)...")
 
         ds = Dataset()
-        ds.QueryRetrieveLevel = "STUDY"
         ds.AccessionNumber = accession_number
         ds.StudyInstanceUID = ""
 
-        responses = assoc.send_c_find(ds, StudyRootQueryRetrieveInformationModelFind)
+        responses = assoc.send_c_find(ds, ModalityWorklistInformationFind)
 
         study_uid = None
         for (status, identifier) in responses:

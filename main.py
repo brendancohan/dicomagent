@@ -1,5 +1,5 @@
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv, set_key
 import os
@@ -67,6 +67,15 @@ def get_current_config() -> Config:
         query_pacs_port=int(os.getenv("QUERY_PACS_PORT", str(pacs_port))),
         query_pacs_ae_title=os.getenv("QUERY_PACS_AE_TITLE", pacs_ae_title),
     )
+
+
+@app.get("/api/v1/logs", summary="Download the current log file")
+def download_logs():
+    log_path = "dicom_agent.log"
+    if os.path.exists(log_path):
+        return FileResponse(log_path, media_type="text/plain", filename="dicom_agent.log")
+    else:
+        raise HTTPException(status_code=404, detail="Log file not found")
 
 
 @app.get("/api/v1/config", response_model=Config, summary="Get current configuration")
@@ -151,6 +160,11 @@ def config_ui():
             </div>
             <button onclick="saveConfig()">Save Configuration</button>
             <div id="message"></div>
+            
+            <hr style="margin: 20px 0;">
+            <div style="text-align: center;">
+                <a href="/api/v1/logs" target="_blank" style="color: #007bff; text-decoration: none; font-weight: bold;">View / Download Logs</a>
+            </div>
         </div>
 
         <script>
