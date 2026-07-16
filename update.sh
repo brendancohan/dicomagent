@@ -37,7 +37,7 @@ echo ""
 
 echo "Please select your update method:"
 echo "1) Automatic Update via Git (Requires Git installed)"
-echo "2) Dependency Update Only (Use if you manually downloaded and extracted a new ZIP)"
+echo "2) Manual ZIP Update (Download, extract, and provide path)"
 echo "3) Cancel"
 echo ""
 read -p "Enter choice [1-3]: " choice
@@ -48,13 +48,37 @@ case $choice in
         echo "Pulling latest code from Git..."
         git pull
         if [ $? -ne 0 ]; then
-            echo "Git pull failed. Please check your Git installation or use Option 2 after downloading manually."
+            echo "Git pull failed. Please check your Git installation or use Option 2."
             exit 1
         fi
         ;;
     2)
         echo ""
-        echo "Skipping Git pull. Assuming new files have already been manually extracted over the old ones."
+        echo "If you haven't already, please download the latest .zip from:"
+        echo "https://github.com/brendancohan/dicomagent/archive/refs/heads/main.zip"
+        echo "Extract the .zip file somewhere on your computer."
+        echo ""
+        read -p "Enter the full path to the extracted directory (or press Enter to cancel): " extracted_path
+        
+        if [ -z "$extracted_path" ]; then
+            echo "Update cancelled."
+            exit 0
+        fi
+        
+        if [ ! -d "$extracted_path" ]; then
+            echo "Error: Directory does not exist."
+            exit 1
+        fi
+        
+        echo "Copying new files from $extracted_path..."
+        # Copy everything from the extracted folder.
+        # Since the downloaded ZIP doesn't contain .env, venv, or logs, this is perfectly safe.
+        cp -R "$extracted_path"/* ./
+        
+        if [ $? -ne 0 ]; then
+            echo "Error copying files. Please check permissions and try again."
+            exit 1
+        fi
         ;;
     3)
         echo ""

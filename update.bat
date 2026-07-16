@@ -35,13 +35,13 @@ echo.
 :show_menu
 echo Please select your update method:
 echo 1) Automatic Update via Git (Requires Git installed)
-echo 2) Dependency Update Only (Use if you manually downloaded and extracted a new ZIP)
+echo 2) Manual ZIP Update (Download, extract, and provide path)
 echo 3) Cancel
 echo.
 set /p choice="Enter choice [1-3]: "
 
 if "%choice%"=="1" goto git_update
-if "%choice%"=="2" goto dep_update
+if "%choice%"=="2" goto manual_update
 if "%choice%"=="3" goto end
 echo Invalid choice. Exiting.
 goto end
@@ -51,7 +51,33 @@ echo.
 echo Pulling latest code from Git...
 git pull
 if errorlevel 1 (
-    echo Git pull failed. Please check your Git installation or use Option 2 after downloading manually.
+    echo Git pull failed. Please check your Git installation or use Option 2.
+    goto end
+)
+goto dep_update
+
+:manual_update
+echo.
+echo If you haven't already, please download the latest .zip from:
+echo https://github.com/brendancohan/dicomagent/archive/refs/heads/main.zip
+echo Extract the .zip file somewhere on your computer.
+echo.
+set /p extracted_path="Enter the full path to the extracted directory (or press Enter to cancel): "
+
+if "%extracted_path%"=="" (
+    echo Update cancelled.
+    goto end
+)
+
+if not exist "%extracted_path%\" (
+    echo Error: Directory does not exist.
+    goto end
+)
+
+echo Copying new files from %extracted_path%...
+xcopy "%extracted_path%\*" .\ /E /Y /C /Q
+if errorlevel 1 (
+    echo Error copying files. Please check permissions and try again.
     goto end
 )
 goto dep_update
