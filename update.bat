@@ -1,7 +1,33 @@
 @echo off
+setlocal
 echo ===================================
 echo    DICOM Agent Service Updater     
 echo ===================================
+
+git --version >nul 2>&1
+if errorlevel 1 goto show_menu
+if not exist ".git\" goto show_menu
+
+echo Checking for updates online...
+git fetch >nul 2>&1
+
+for /f "delims=" %%i in ('git rev-parse @ 2^>nul') do set LOCAL=%%i
+for /f "delims=" %%i in ('git rev-parse @^{u} 2^>nul') do set REMOTE=%%i
+
+if "%LOCAL%"=="" goto show_menu
+if "%REMOTE%"=="" goto show_menu
+
+if "%LOCAL%"=="%REMOTE%" (
+    echo No updates available. You are already running the latest version.
+    set /p exit_choice="Do you want to exit? [Y/n]: "
+    if /i "%exit_choice%"=="y" goto end
+    if "%exit_choice%"=="" goto end
+) else (
+    echo An update is available!
+)
+echo.
+
+:show_menu
 echo Please select your update method:
 echo 1) Automatic Update via Git (Requires Git installed)
 echo 2) Dependency Update Only (Use if you manually downloaded and extracted a new ZIP)
@@ -42,4 +68,5 @@ echo ===================================
 echo Please restart the service (close the running console window and start it again) for changes to take effect.
 
 :end
+endlocal
 pause
