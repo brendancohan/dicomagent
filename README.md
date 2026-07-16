@@ -31,6 +31,23 @@ A lightweight, cross-platform microservice built with Python and FastAPI that en
    install.bat
    ```
 
+## Updating the Service
+
+To safely update your existing installation to the latest version without losing your configuration settings:
+
+### Linux / macOS
+```bash
+chmod +x update.sh  # (Only needed the very first time)
+./update.sh
+```
+
+### Windows
+```cmd
+update.bat
+```
+
+The script will automatically check for updates online and present an interactive menu allowing you to update via Git or a manual ZIP download. Both methods will safely preserve your `.env` configuration file and automatically handle any Python dependency updates.
+
 ## Starting the Service
 
 ### Linux / macOS
