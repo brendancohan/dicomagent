@@ -1,29 +1,34 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 echo ===================================
 echo    DICOM Agent Service Updater     
 echo ===================================
 
-git --version >nul 2>&1
-if errorlevel 1 goto show_menu
-if not exist ".git\" goto show_menu
+set RAW_URL=https://raw.githubusercontent.com/brendancohan/dicomagent/main/VERSION
+
+if exist "VERSION" (
+    set /p LOCAL_VERSION=<VERSION
+    set LOCAL_VERSION=!LOCAL_VERSION: =!
+) else (
+    set LOCAL_VERSION=unknown
+)
 
 echo Checking for updates online...
-git fetch >nul 2>&1
+set REMOTE_VERSION=
+for /f "delims=" %%i in ('powershell -command "try { (Invoke-WebRequest -Uri '%RAW_URL%' -UseBasicParsing -TimeoutSec 5).Content.Trim() } catch { '' }"') do set REMOTE_VERSION=%%i
 
-for /f "delims=" %%i in ('git rev-parse @ 2^>nul') do set LOCAL=%%i
-for /f "delims=" %%i in ('git rev-parse @^{u} 2^>nul') do set REMOTE=%%i
+if "%REMOTE_VERSION%"=="" (
+    echo Warning: Could not check for updates online ^(no internet connection or blocked^).
+    goto show_menu
+)
 
-if "%LOCAL%"=="" goto show_menu
-if "%REMOTE%"=="" goto show_menu
-
-if "%LOCAL%"=="%REMOTE%" (
-    echo No updates available. You are already running the latest version.
+if "%LOCAL_VERSION%"=="%REMOTE_VERSION%" (
+    echo No updates available. You are already running version %LOCAL_VERSION%.
     set /p exit_choice="Do you want to exit? [Y/n]: "
-    if /i "%exit_choice%"=="y" goto end
-    if "%exit_choice%"=="" goto end
+    if /i "!exit_choice!"=="y" goto end
+    if "!exit_choice!"=="" goto end
 ) else (
-    echo An update is available!
+    echo An update is available! ^(Current: %LOCAL_VERSION% -^> Latest: %REMOTE_VERSION%^)
 )
 echo.
 

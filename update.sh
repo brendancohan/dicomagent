@@ -4,25 +4,36 @@ echo "==================================="
 echo "   DICOM Agent Service Updater     "
 echo "==================================="
 
-# Check for updates if git is available
-if command -v git &> /dev/null && [ -d ".git" ]; then
-    echo "Checking for updates online..."
-    git fetch
-    LOCAL=$(git rev-parse @ 2>/dev/null)
-    REMOTE=$(git rev-parse @{u} 2>/dev/null)
-    
-    if [ -n "$LOCAL" ] && [ -n "$REMOTE" ] && [ "$LOCAL" = "$REMOTE" ]; then
-        echo "No updates available. You are already running the latest version."
-        read -p "Do you want to exit? [Y/n]: " exit_choice
-        if [[ -z "$exit_choice" || "$exit_choice" =~ ^[Yy]$ ]]; then
-            echo "Exiting."
-            exit 0
-        fi
-    elif [ -n "$LOCAL" ] && [ -n "$REMOTE" ]; then
-        echo "An update is available!"
-    fi
-    echo ""
+RAW_URL="https://raw.githubusercontent.com/brendancohan/dicomagent/main/VERSION"
+
+if [ -f "VERSION" ]; then
+    LOCAL_VERSION=$(cat VERSION | tr -d '[:space:]')
+else
+    LOCAL_VERSION="unknown"
 fi
+
+echo "Checking for updates online..."
+if command -v curl &> /dev/null; then
+    REMOTE_VERSION=$(curl -s -f "$RAW_URL" | tr -d '[:space:]')
+elif command -v wget &> /dev/null; then
+    REMOTE_VERSION=$(wget -qO- "$RAW_URL" | tr -d '[:space:]')
+else
+    REMOTE_VERSION=""
+fi
+
+if [ -z "$REMOTE_VERSION" ]; then
+    echo "Warning: Could not check for updates online (no curl or wget found, or no internet connection)."
+elif [ "$LOCAL_VERSION" = "$REMOTE_VERSION" ]; then
+    echo "No updates available. You are already running version $LOCAL_VERSION."
+    read -p "Do you want to exit? [Y/n]: " exit_choice
+    if [[ -z "$exit_choice" || "$exit_choice" =~ ^[Yy]$ ]]; then
+        echo "Exiting."
+        exit 0
+    fi
+else
+    echo "An update is available! (Current: $LOCAL_VERSION -> Latest: $REMOTE_VERSION)"
+fi
+echo ""
 
 echo "Please select your update method:"
 echo "1) Automatic Update via Git (Requires Git installed)"
