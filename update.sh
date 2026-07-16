@@ -47,6 +47,11 @@ REQ_CHANGED=0
 case $choice in
     1)
         echo ""
+        if ! command -v git &> /dev/null || [ ! -d ".git" ]; then
+            echo "Git not found or not a git repository. Cannot update via Git. Please use Option 2."
+            exit 1
+        fi
+        
         if command -v md5sum &> /dev/null; then
             REQ_BEFORE=$(md5sum requirements.txt 2>/dev/null | awk '{print $1}')
         else

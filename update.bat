@@ -49,6 +49,16 @@ goto end
 
 :git_update
 echo.
+git --version >nul 2>&1
+if errorlevel 1 (
+    echo Git not found. Cannot update via Git. Please use Option 2.
+    goto end
+)
+if not exist ".git\" (
+    echo Not a git repository. Cannot update via Git. Please use Option 2.
+    goto end
+)
+
 :: Store hash of current requirements
 certutil -hashfile requirements.txt MD5 | find /i /v "certutil" | find /i /v "hash" > req_hash_before.txt
 set /p REQ_BEFORE=<req_hash_before.txt
