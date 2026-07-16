@@ -100,4 +100,4 @@ To integrate with Microsoft Power Apps:
 
 ## Logging
 
-All transaction attempts and system errors are logged to `dicom_agent.log` located in the root directory.
+All transaction attempts and system errors are logged to `dicom_agent.log` located in the root directory. You can easily view and download these logs via the Web Configuration UI by clicking the **"View / Download Logs"** button at the bottom of the page, or by navigating directly to `http://localhost:8000/api/v1/logs`.

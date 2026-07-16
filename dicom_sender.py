@@ -1,7 +1,7 @@
 from typing import List
 from pynetdicom import AE
 from pydicom.dataset import Dataset
-from pynetdicom.sop_class import SecondaryCaptureImageStorage, ModalityWorklistInformationFind
+from pynetdicom.sop_class import SecondaryCaptureImageStorage, ModalityWorklistInformationFind, StudyRootQueryRetrieveInformationModelFind
 import logging
 
 logger = logging.getLogger("dicom_agent")
@@ -58,25 +58,32 @@ def query_study_uid(
     pacs_port: int,
     pacs_ae_title: str,
     agent_ae_title: str,
+    is_mwl: bool = False
 ) -> str:
     """
     Query PACS for StudyInstanceUID given an Accession Number.
     Returns the StudyInstanceUID or None if not found.
     """
     ae = AE(ae_title=agent_ae_title)
-    ae.add_requested_context(ModalityWorklistInformationFind)
+    
+    sop_class = ModalityWorklistInformationFind if is_mwl else StudyRootQueryRetrieveInformationModelFind
+    query_type = "MWL" if is_mwl else "Study Root"
+    
+    ae.add_requested_context(sop_class)
 
-    logger.info(f"Requesting Association with {pacs_ae_title} at {pacs_ip}:{pacs_port} for C-FIND (MWL)...")
+    logger.info(f"Requesting Association with {pacs_ae_title} at {pacs_ip}:{pacs_port} for C-FIND ({query_type})...")
     assoc = ae.associate(pacs_ip, pacs_port, ae_title=pacs_ae_title)
 
     if assoc.is_established:
-        logger.info("Association established. Sending C-FIND request (MWL)...")
+        logger.info(f"Association established. Sending C-FIND request ({query_type})...")
 
         ds = Dataset()
+        if not is_mwl:
+            ds.QueryRetrieveLevel = "STUDY"
         ds.AccessionNumber = accession_number
         ds.StudyInstanceUID = ""
 
-        responses = assoc.send_c_find(ds, ModalityWorklistInformationFind)
+        responses = assoc.send_c_find(ds, sop_class)
 
         study_uid = None
         for (status, identifier) in responses:
@@ -85,13 +92,13 @@ def query_study_uid(
                 if status.Status in (0xFF00, 0xFF01) and identifier:
                     if 'StudyInstanceUID' in identifier:
                         study_uid = identifier.StudyInstanceUID
-                        logger.info(f"C-FIND match found! Extracted StudyInstanceUID: {study_uid}")
+                        logger.info(f"C-FIND match found in {query_type}! Extracted StudyInstanceUID: {study_uid}")
                         break # We just need the first match
             else:
-                logger.error("Connection timed out, was aborted or received invalid response during C-FIND")
+                logger.error(f"Connection timed out, was aborted or received invalid response during C-FIND ({query_type})")
 
         assoc.release()
         return study_uid
     else:
-        logger.error("Association rejected, aborted or never connected")
+        logger.error(f"Association rejected, aborted or never connected for C-FIND ({query_type})")
         return None

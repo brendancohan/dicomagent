@@ -51,6 +51,14 @@ class Config(BaseModel):
     query_pacs_ip: str
     query_pacs_port: int
     query_pacs_ae_title: str
+    enable_mwl_query: bool
+    mwl_pacs_ip: str
+    mwl_pacs_port: int
+    mwl_pacs_ae_title: str
+    enable_secondary_pacs_query: bool
+    secondary_pacs_ip: str
+    secondary_pacs_port: int
+    secondary_pacs_ae_title: str
 
 
 def get_current_config() -> Config:
@@ -66,6 +74,14 @@ def get_current_config() -> Config:
         query_pacs_ip=os.getenv("QUERY_PACS_IP", pacs_ip),
         query_pacs_port=int(os.getenv("QUERY_PACS_PORT", str(pacs_port))),
         query_pacs_ae_title=os.getenv("QUERY_PACS_AE_TITLE", pacs_ae_title),
+        enable_mwl_query=os.getenv("ENABLE_MWL_QUERY", "false").lower() == "true",
+        mwl_pacs_ip=os.getenv("MWL_PACS_IP", pacs_ip),
+        mwl_pacs_port=int(os.getenv("MWL_PACS_PORT", str(pacs_port))),
+        mwl_pacs_ae_title=os.getenv("MWL_PACS_AE_TITLE", pacs_ae_title),
+        enable_secondary_pacs_query=os.getenv("ENABLE_SECONDARY_PACS_QUERY", "false").lower() == "true",
+        secondary_pacs_ip=os.getenv("SECONDARY_PACS_IP", pacs_ip),
+        secondary_pacs_port=int(os.getenv("SECONDARY_PACS_PORT", str(pacs_port))),
+        secondary_pacs_ae_title=os.getenv("SECONDARY_PACS_AE_TITLE", pacs_ae_title),
     )
 
 
@@ -95,6 +111,14 @@ def update_config(config: Config):
     set_key(ENV_FILE, "QUERY_PACS_IP", config.query_pacs_ip)
     set_key(ENV_FILE, "QUERY_PACS_PORT", str(config.query_pacs_port))
     set_key(ENV_FILE, "QUERY_PACS_AE_TITLE", config.query_pacs_ae_title)
+    set_key(ENV_FILE, "ENABLE_MWL_QUERY", str(config.enable_mwl_query).lower())
+    set_key(ENV_FILE, "MWL_PACS_IP", config.mwl_pacs_ip)
+    set_key(ENV_FILE, "MWL_PACS_PORT", str(config.mwl_pacs_port))
+    set_key(ENV_FILE, "MWL_PACS_AE_TITLE", config.mwl_pacs_ae_title)
+    set_key(ENV_FILE, "ENABLE_SECONDARY_PACS_QUERY", str(config.enable_secondary_pacs_query).lower())
+    set_key(ENV_FILE, "SECONDARY_PACS_IP", config.secondary_pacs_ip)
+    set_key(ENV_FILE, "SECONDARY_PACS_PORT", str(config.secondary_pacs_port))
+    set_key(ENV_FILE, "SECONDARY_PACS_AE_TITLE", config.secondary_pacs_ae_title)
     return {"message": "Configuration updated successfully"}
 
 
@@ -153,6 +177,40 @@ def config_ui():
                 <input type="text" id="query_pacs_ae_title" />
             </div>
 
+            <h3>Modality Worklist (MWL) Configuration</h3>
+            <div class="form-group">
+                <label><input type="checkbox" id="enable_mwl_query" /> Enable MWL Query</label>
+            </div>
+            <div class="form-group">
+                <label>MWL IP / Hostname</label>
+                <input type="text" id="mwl_pacs_ip" />
+            </div>
+            <div class="form-group">
+                <label>MWL Port</label>
+                <input type="number" id="mwl_pacs_port" />
+            </div>
+            <div class="form-group">
+                <label>MWL AE Title</label>
+                <input type="text" id="mwl_pacs_ae_title" />
+            </div>
+
+            <h3>Secondary Query PACS Configuration</h3>
+            <div class="form-group">
+                <label><input type="checkbox" id="enable_secondary_pacs_query" /> Enable Secondary PACS Query</label>
+            </div>
+            <div class="form-group">
+                <label>Secondary PACS IP / Hostname</label>
+                <input type="text" id="secondary_pacs_ip" />
+            </div>
+            <div class="form-group">
+                <label>Secondary PACS Port</label>
+                <input type="number" id="secondary_pacs_port" />
+            </div>
+            <div class="form-group">
+                <label>Secondary PACS AE Title</label>
+                <input type="text" id="secondary_pacs_ae_title" />
+            </div>
+
             <h3>Agent Configuration</h3>
             <div class="form-group">
                 <label>Agent AE Title (Our AE Title)</label>
@@ -179,6 +237,14 @@ def config_ui():
                     document.getElementById('query_pacs_ip').value = data.query_pacs_ip;
                     document.getElementById('query_pacs_port').value = data.query_pacs_port;
                     document.getElementById('query_pacs_ae_title').value = data.query_pacs_ae_title;
+                    document.getElementById('enable_mwl_query').checked = data.enable_mwl_query;
+                    document.getElementById('mwl_pacs_ip').value = data.mwl_pacs_ip;
+                    document.getElementById('mwl_pacs_port').value = data.mwl_pacs_port;
+                    document.getElementById('mwl_pacs_ae_title').value = data.mwl_pacs_ae_title;
+                    document.getElementById('enable_secondary_pacs_query').checked = data.enable_secondary_pacs_query;
+                    document.getElementById('secondary_pacs_ip').value = data.secondary_pacs_ip;
+                    document.getElementById('secondary_pacs_port').value = data.secondary_pacs_port;
+                    document.getElementById('secondary_pacs_ae_title').value = data.secondary_pacs_ae_title;
                 } catch (e) {
                     showMessage("Failed to load configuration", false);
                 }
@@ -192,7 +258,15 @@ def config_ui():
                     agent_ae_title: document.getElementById('agent_ae_title').value,
                     query_pacs_ip: document.getElementById('query_pacs_ip').value,
                     query_pacs_port: parseInt(document.getElementById('query_pacs_port').value),
-                    query_pacs_ae_title: document.getElementById('query_pacs_ae_title').value
+                    query_pacs_ae_title: document.getElementById('query_pacs_ae_title').value,
+                    enable_mwl_query: document.getElementById('enable_mwl_query').checked,
+                    mwl_pacs_ip: document.getElementById('mwl_pacs_ip').value,
+                    mwl_pacs_port: parseInt(document.getElementById('mwl_pacs_port').value) || 0,
+                    mwl_pacs_ae_title: document.getElementById('mwl_pacs_ae_title').value,
+                    enable_secondary_pacs_query: document.getElementById('enable_secondary_pacs_query').checked,
+                    secondary_pacs_ip: document.getElementById('secondary_pacs_ip').value,
+                    secondary_pacs_port: parseInt(document.getElementById('secondary_pacs_port').value) || 0,
+                    secondary_pacs_ae_title: document.getElementById('secondary_pacs_ae_title').value
                 };
 
                 try {
@@ -255,23 +329,48 @@ async def encapsulate_and_send_pdf(
             logger.warning("Accession Number is missing. Returning 400 Bad Request.")
             raise HTTPException(status_code=400, detail="Accession Number is required to query PACS for StudyUID")
 
-        # Query PACS for the StudyInstanceUID
+        # Query Main PACS for the StudyInstanceUID
         study_uid = query_study_uid(
             accession_number=accession_number,
             pacs_ip=config.query_pacs_ip,
             pacs_port=config.query_pacs_port,
             pacs_ae_title=config.query_pacs_ae_title,
             agent_ae_title=config.agent_ae_title,
+            is_mwl=False,
         )
 
+        # Fallback 1: MWL Query
+        if not study_uid and config.enable_mwl_query:
+            logger.info("Main PACS query failed, falling back to MWL Query...")
+            study_uid = query_study_uid(
+                accession_number=accession_number,
+                pacs_ip=config.mwl_pacs_ip,
+                pacs_port=config.mwl_pacs_port,
+                pacs_ae_title=config.mwl_pacs_ae_title,
+                agent_ae_title=config.agent_ae_title,
+                is_mwl=True,
+            )
+
+        # Fallback 2: Secondary PACS Query
+        if not study_uid and config.enable_secondary_pacs_query:
+            logger.info("Previous queries failed, falling back to Secondary PACS Query...")
+            study_uid = query_study_uid(
+                accession_number=accession_number,
+                pacs_ip=config.secondary_pacs_ip,
+                pacs_port=config.secondary_pacs_port,
+                pacs_ae_title=config.secondary_pacs_ae_title,
+                agent_ae_title=config.agent_ae_title,
+                is_mwl=False,
+            )
+
         if not study_uid:
-            logger.warning(f"Study not found in PACS for Accession Number: {accession_number}. Returning 404 Not Found.")
+            logger.warning(f"Study not found in any configured PACS/MWL for Accession Number: {accession_number}. Returning 404 Not Found.")
             raise HTTPException(
                 status_code=404,
                 detail=f"Study not found in PACS for Accession Number: {accession_number}"
             )
 
-        logger.info(f"Successfully retrieved StudyInstanceUID: {study_uid} from PACS for Accession: {accession_number}")
+        logger.info(f"Successfully retrieved StudyInstanceUID: {study_uid} for Accession: {accession_number}")
 
         # Read the PDF bytes
         pdf_bytes = await pdf_file.read()
