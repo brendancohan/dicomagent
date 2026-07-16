@@ -49,13 +49,28 @@ goto end
 
 :git_update
 echo.
+:: Store hash of current requirements
+certutil -hashfile requirements.txt MD5 | find /i /v "certutil" | find /i /v "hash" > req_hash_before.txt
+set /p REQ_BEFORE=<req_hash_before.txt
+del req_hash_before.txt
+
 echo Pulling latest code from Git...
 git pull
 if errorlevel 1 (
     echo Git pull failed. Please check your Git installation or use Option 2.
     goto end
 )
-goto dep_update
+
+certutil -hashfile requirements.txt MD5 | find /i /v "certutil" | find /i /v "hash" > req_hash_after.txt
+set /p REQ_AFTER=<req_hash_after.txt
+del req_hash_after.txt
+
+if not "!REQ_BEFORE!"=="!REQ_AFTER!" (
+    set REQ_CHANGED=1
+) else (
+    set REQ_CHANGED=0
+)
+goto finish_update
 
 :manual_update
 echo.
@@ -65,38 +80,41 @@ echo Extract the .zip file somewhere on your computer.
 echo.
 set /p extracted_path="Enter the full path to the extracted directory (or press Enter to cancel): "
 
-if "%extracted_path%"=="" (
+if "!extracted_path!"=="" (
     echo Update cancelled.
     goto end
 )
 
-if not exist "%extracted_path%\" (
+if not exist "!extracted_path!\" (
     echo Error: Directory does not exist.
     goto end
 )
 
-echo Copying new files from %extracted_path%...
-xcopy "%extracted_path%\*" .\ /E /Y /C /Q
+fc requirements.txt "!extracted_path!\requirements.txt" >nul 2>&1
+if errorlevel 1 (
+    set REQ_CHANGED=1
+) else (
+    set REQ_CHANGED=0
+)
+
+echo Copying new files from !extracted_path!...
+xcopy "!extracted_path!\*" .\ /E /Y /C /Q
 if errorlevel 1 (
     echo Error copying files. Please check permissions and try again.
     goto end
 )
-goto dep_update
+goto finish_update
 
-:dep_update
-echo.
-echo Activating virtual environment and updating dependencies...
-if not exist "venv\Scripts\activate.bat" (
-    echo Warning: venv\Scripts\activate.bat not found. Are you running this from the root directory?
-    goto end
-)
-call venv\Scripts\activate.bat
-pip install -r requirements.txt
-
+:finish_update
 echo.
 echo ===================================
 echo  Update Complete! 
 echo ===================================
+if "!REQ_CHANGED!"=="1" (
+    echo WARNING: The project dependencies have changed in this update.
+    echo You MUST run install.bat on the host machine to update your Python environment.
+    echo.
+)
 echo Please restart the service (close the running console window and start it again) for changes to take effect.
 
 :end
