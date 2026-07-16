@@ -50,7 +50,7 @@ goto end
 :git_update
 echo.
 git --version >nul 2>&1
-if errorlevel 1 (
+if !ERRORLEVEL! NEQ 0 (
     echo Git not found. Cannot update via Git. Please use Option 2.
     goto end
 )
@@ -66,7 +66,7 @@ del req_hash_before.txt
 
 echo Pulling latest code from Git...
 git pull
-if errorlevel 1 (
+if !ERRORLEVEL! NEQ 0 (
     echo Git pull failed. Please check your Git installation or use Option 2.
     goto end
 )
@@ -101,7 +101,7 @@ if not exist "!extracted_path!\" (
 )
 
 fc requirements.txt "!extracted_path!\requirements.txt" >nul 2>&1
-if errorlevel 1 (
+if !ERRORLEVEL! NEQ 0 (
     set REQ_CHANGED=1
 ) else (
     set REQ_CHANGED=0
@@ -109,7 +109,7 @@ if errorlevel 1 (
 
 echo Copying new files from !extracted_path!...
 xcopy "!extracted_path!\*" .\ /E /Y /C /Q
-if errorlevel 1 (
+if !ERRORLEVEL! NEQ 0 (
     echo Error copying files. Please check permissions and try again.
     goto end
 )
